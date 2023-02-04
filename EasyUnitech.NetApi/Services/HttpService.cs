@@ -7,12 +7,10 @@ public class HttpService : IHttpService
 {
     private readonly IKeysAccessor _keysService;
 
-
     public HttpService(IKeysAccessor keysService)
     {
         _keysService = keysService;
     }
-
 
     public async Task<string> GetAsync(string uri)
     {

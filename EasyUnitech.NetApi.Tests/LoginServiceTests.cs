@@ -18,14 +18,12 @@ public class LoginServiceTests
 	private HttpClient _httpClient;
 	private LoginService _service;
 
-
 	public LoginServiceTests()
 	{
 		_httpMock = new();
 		_httpClient = new(_httpMock);
 		_service = new(new Mock<ILogger<LoginService>>().Object, _httpClient);
     }
-
 
 	[Fact]
 	public async void ValidLogin()
@@ -53,7 +51,6 @@ public class LoginServiceTests
 		Assert.Equal(responceKeys.SessCommon, keys.SessCommon);
     }
 
-
 	[Fact]
 	public async void InvalidLogin()
 	{
@@ -77,7 +74,6 @@ public class LoginServiceTests
         Assert.Equal(responceKeys.SessCommon, keys.SessCommon);
     }
 
-
 	[Fact]
 	public async void ValidValidate()
 	{
@@ -89,7 +85,6 @@ public class LoginServiceTests
 		Assert.True(ok);
     }
 
-
 	[Fact]
 	public async void InvalidValidate()
 	{
@@ -98,7 +93,6 @@ public class LoginServiceTests
         var ok = await _service.ValidateAsync(new("aa", "uu"));
 		Assert.False(ok);
     }
-
 
 	private void SetAuthDefaults(HttpResponseMessage response, Keys keys)
 	{

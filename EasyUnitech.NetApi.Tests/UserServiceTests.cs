@@ -120,7 +120,6 @@ public class UserServiceTests
 	</body>
 </html>";
 
-
     [Fact]
 	public async void GetUser_ServerReturnsStudentUserPage_ParsedSuccefuly()
 	{
@@ -140,7 +139,6 @@ public class UserServiceTests
 		Assert.Equal(FakePhoto, user.Photo);
 	}
 
-
 	[Fact]
 	public async void TryGetFirstYear_ServerReturnsStudentUserPage_ParsedSuccefuly()
 	{
@@ -158,7 +156,6 @@ public class UserServiceTests
 		Assert.True(ok);
 		Assert.Equal(FakeFirstYear, firstYear);
 	}
-
 
 	[Fact]
 	public async void TryGetFirstYear_ServerReturnsTeacherUserPage_DidNotParsed()
@@ -178,7 +175,6 @@ public class UserServiceTests
         Assert.Equal(0, firstYear);
     }
 
-
 	[Fact]
 	public async void IsStudent_ServerReturnsStudentUserPage_ReturnedTrue()
 	{
@@ -194,7 +190,6 @@ public class UserServiceTests
 
 		Assert.True(isStudent);
     }
-
 
     [Fact]
     public async void IsStudent_ServerReturnsTeacherUserPage_ReturnedFalse()

@@ -26,7 +26,6 @@ public class LoginService : ILoginService
         _httpClient = httpClient;
     }
 
-
     public async Task LogoutAsync(Keys keys)
     {
         var request = new HttpRequestMessage(HttpMethod.Get,
@@ -34,7 +33,6 @@ public class LoginService : ILoginService
         request.SetKeys(keys);
         await _httpClient.SendAsync(request);
     }
-
 
     public async Task<bool> TryLoginAsync(string login, string password,
         Action<Keys> callback)
@@ -68,7 +66,6 @@ public class LoginService : ILoginService
         return loginResponse.Success;
     }
 
-
     public async Task<bool> ValidateAsync(Keys keys)
     {
         var request = new HttpRequestMessage(HttpMethod.Get,
@@ -77,7 +74,6 @@ public class LoginService : ILoginService
         var response = await _httpClient.SendAsync(request);
         return response.IsSuccessStatusCode;
     }
-
 
     private class LoginResponce
     {

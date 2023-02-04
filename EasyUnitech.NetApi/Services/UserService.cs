@@ -23,13 +23,11 @@ public class UserService: IUserService
     private readonly IHttpService _httpService;
     private readonly ILogger<UserService> _logger;
 
-
     public UserService(IHttpService httpService, ILogger<UserService> logger)
     {
         _httpService = httpService;
         _logger = logger;
     }
-
 
     public async Task<User> GetUserAsync()
     {
@@ -81,7 +79,6 @@ public class UserService: IUserService
         return new(firstName, lastName, patronymic, birthday, photo);
     }
 
-
     public async Task<bool> TryGetFirstYearAsync(Action<int> callback)
     {
         var content = await _httpService
@@ -124,7 +121,6 @@ public class UserService: IUserService
         }
         return neighborsOpenLink.ParentElement.InnerHtml.Contains("Одногруппники");
     }
-
 
     private void ParseBirthday(string value, out DateTime output)
     {

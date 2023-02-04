@@ -20,7 +20,6 @@ public static class HttpExtensions
         return container;
     }
 
-
     public static void SetKeys(this HttpRequestMessage request, Keys keys)
     {
         request.Headers.Add("Cookie",

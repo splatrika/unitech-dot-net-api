@@ -61,6 +61,11 @@ public class UserServiceTests
 			<div class=""info""><strong>Год поступления:</strong> {FakeFirstYear}</div>
 			<div class=""info""><strong>Период обучения:</strong> 3 года 10 мес.</div>
 		</div>
+		<div class=""userpage_block_wrap"">
+			<div class=""userpage_block_title"">
+				Одногруппники <a id=""neighborsopenlink"" class=""fl_right"" href=""javascript:showHideNeighbors();"">Развернуть</a>
+			</div>			
+		</div>
 	</body>
 </html>";
 
@@ -103,6 +108,14 @@ public class UserServiceTests
 			</div>
 			<div class=""info""><strong>Структурное подразделение:</strong> Колледж</div>
 			<div class=""info""><strong>Должность:</strong> Препод с:</div>
+		</div>
+		<div class=""userpage_block_wrap"">
+			<div class=""userpage_block_title"">
+				Коллеги <a id=""neighborsopenlink"" class=""fl_right"" href=""javascript:showHideNeighbors();"">Развернуть</a>
+			</div>			
+		</div>
+		<div class=""posts"">
+			<article>Мои Бывшие Одногруппники</article>
 		</div>
 	</body>
 </html>";
@@ -163,5 +176,39 @@ public class UserServiceTests
 
         Assert.False(ok);
         Assert.Equal(0, firstYear);
+    }
+
+
+	[Fact]
+	public async void IsStudent_ServerReturnsStudentUserPage_ReturnedTrue()
+	{
+        var httpServiceMock = new Mock<IHttpService>();
+        httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
+            .Returns(Task.FromResult(StudentFakeUserPage));
+
+        var loggerMock = new Mock<ILogger<UserService>>();
+
+        var service = new UserService(httpServiceMock.Object, loggerMock.Object);
+
+		var isStudent = await service.IsStudentAsync();
+
+		Assert.True(isStudent);
+    }
+
+
+    [Fact]
+    public async void IsStudent_ServerReturnsTeacherUserPage_ReturnedFalse()
+    {
+        var httpServiceMock = new Mock<IHttpService>();
+        httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
+            .Returns(Task.FromResult(TeacherFakeUserPage));
+
+        var loggerMock = new Mock<ILogger<UserService>>();
+
+        var service = new UserService(httpServiceMock.Object, loggerMock.Object);
+
+        var isStudent = await service.IsStudentAsync();
+
+        Assert.False(isStudent);
     }
 }

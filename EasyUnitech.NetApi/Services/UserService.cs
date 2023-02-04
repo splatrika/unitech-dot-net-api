@@ -5,6 +5,9 @@ using EasyUnitech.NetApi.Interfaces;
 using EasyUnitech.NetApi.Models;
 using EasyUnitech.NetApi.Constants;
 using Microsoft.Extensions.Logging;
+using AngleSharp.Dom;
+using System.Reflection.Metadata;
+using EasyUnitech.NetApi.Extensions;
 
 namespace EasyUnitech.NetApi.Services;
 
@@ -14,6 +17,8 @@ public class UserService: IUserService
     public const int LastNameIndex = 0;
     public const int PatronymicIndex = 2;
     public const int BirthdayIndex = 3;
+    public const int FirstYearIndex = 9;
+    public const string UserPageRoute = "/user";
 
     private readonly IHttpService _httpService;
     private readonly ILogger<UserService> _logger;
@@ -28,11 +33,9 @@ public class UserService: IUserService
 
     public async Task<User> GetUserAsync()
     {
-        var content = await _httpService.GetAsync($"{HttpConstants.Host}/user");
-
-        var configuration = Configuration.Default;
-        var context = BrowsingContext.New(configuration);
-        var document = await context.OpenAsync(response => response.Content(content));
+        var content = await _httpService
+            .GetAsync($"{HttpConstants.Host}{UserPageRoute}");
+        var document = await content.ParseHtmlAsync();
 
         var firstName = "";
         var lastName = "";
@@ -41,24 +44,21 @@ public class UserService: IUserService
         var photo = "";
 
         var info = document.QuerySelectorAll(".info");
-        var binds = new Dictionary<int, Action<string>>();
-        binds[FirstNameIndex] = x => firstName = x;
-        binds[LastNameIndex] = x => lastName = x;
-        binds[PatronymicIndex] = x => patronymic = x;
-        binds[BirthdayIndex] = x => ParseBirthday(x, out birthday);
+        var mappers = new Dictionary<int, Action<string>>();
+        mappers[FirstNameIndex] = x => firstName = x;
+        mappers[LastNameIndex] = x => lastName = x;
+        mappers[PatronymicIndex] = x => patronymic = x;
+        mappers[BirthdayIndex] = x => ParseBirthday(x, out birthday);
 
-        foreach (var infoIndex in binds.Keys)
+        foreach (var infoIndex in mappers.Keys)
         {
             if (infoIndex >= info.Length)
             {
                 _logger.LogWarning("Unable to parse some data");
                 continue;
             }
-            var blockContent = info[infoIndex].InnerHtml;
-            var value = blockContent.Split("</strong>")
-                .ElementAt(1)
-                .Substring(1);
-            binds[infoIndex].Invoke(value);
+            var value = GetValueFromInfo(info[infoIndex]);
+            mappers[infoIndex].Invoke(value);
         }
 
         var photoContainer = document.QuerySelector(".users_avatar_wrap");
@@ -82,6 +82,28 @@ public class UserService: IUserService
     }
 
 
+    public async Task<bool> TryGetFirstYearAsync(Action<int> callback)
+    {
+        var content = await _httpService
+            .GetAsync($"{HttpConstants.Host}{UserPageRoute}");
+        var document = await content.ParseHtmlAsync();
+
+        var info = document.QuerySelectorAll(".info");
+        if (info.Length <= FirstYearIndex)
+        {
+            return false;
+        }
+        var firstYearString = GetValueFromInfo(info[FirstYearIndex]);
+        var firstYear = 0;
+        if (int.TryParse(firstYearString, out firstYear))
+        {
+            callback.Invoke(firstYear);
+            return true;
+        }
+        return false;
+    }
+
+
     private void ParseBirthday(string value, out DateTime output)
     {
         value = value.Replace("\t", "")
@@ -91,6 +113,14 @@ public class UserService: IUserService
         {
             _logger.LogWarning("Unable to parse birthday data");
         }
+    }
+
+    private string GetValueFromInfo(IElement infoElement)
+    {
+        return infoElement.InnerHtml
+            .Split("</strong>")
+            .ElementAt(1)
+            .Substring(1);
     }
 }
 

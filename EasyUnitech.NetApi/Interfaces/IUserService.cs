@@ -6,4 +6,6 @@ public interface IUserService
     Task<User> GetUserAsync();
 
     Task<bool> TryGetFirstYearAsync(Action<int> callback);
+
+    Task<bool> IsStudentAsync();
 }

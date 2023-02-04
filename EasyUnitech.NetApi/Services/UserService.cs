@@ -103,6 +103,28 @@ public class UserService: IUserService
         return false;
     }
 
+    public async Task<bool> IsStudentAsync()
+    {
+        var content = await _httpService
+            .GetAsync($"{HttpConstants.Host}{UserPageRoute}");
+        var document = await content.ParseHtmlAsync();
+
+        var neighborsOpenLink = document.QuerySelector("#neighborsopenlink");
+        if (neighborsOpenLink == null)
+        {
+            _logger.LogWarning(
+                "Unable to determine type of user: neighborsopenlink not found");
+            return false;
+        }
+        if (neighborsOpenLink.ParentElement == null)
+        {
+            _logger.LogWarning(
+                "Unable to determine type of user: neighborsopenlink's parent not found");
+            return false;
+        }
+        return neighborsOpenLink.ParentElement.InnerHtml.Contains("Одногруппники");
+    }
+
 
     private void ParseBirthday(string value, out DateTime output)
     {

@@ -5,7 +5,7 @@ using EasyUnitech.NetApi.Services;
 using Microsoft.Extensions.Logging;
 using Moq;
 using Xunit;
-namespace EasyUnitech.NetApi.Tests.Unit;
+namespace EasyUnitech.NetApi.Tests;
 
 public class UserServiceTests
 {

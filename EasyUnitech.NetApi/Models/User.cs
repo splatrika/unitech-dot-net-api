@@ -8,8 +8,12 @@ public class User
 	public DateTime Bithday { get; }
 	public string Photo { get; }
 
-    public User(string firstName, string lastName, string patronymic,
-        DateTime bithday, string photo)
+    public User(
+        string firstName,
+        string lastName,
+        string patronymic,
+        DateTime bithday,
+        string photo)
     {
         FirstName = firstName;
         LastName = lastName;

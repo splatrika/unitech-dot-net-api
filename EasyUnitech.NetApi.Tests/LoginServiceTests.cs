@@ -10,7 +10,7 @@ using System.Text;
 using System.Net.Http.Headers;
 using EasyUnitech.NetApi.Constants;
 
-namespace EasyUnitech.NetApi.Tests.Unit;
+namespace EasyUnitech.NetApi.Tests;
 
 public class LoginServiceTests
 {

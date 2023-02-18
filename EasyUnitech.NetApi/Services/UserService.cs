@@ -20,18 +20,18 @@ public class UserService: IUserService
     public const int FirstYearIndex = 9;
     public const string UserPageRoute = "/user";
 
-    private readonly IAuthorizedHttpClient _httpService;
+    private readonly IAuthorizedHttpClient _httpClient;
     private readonly ILogger<UserService> _logger;
 
-    public UserService(IAuthorizedHttpClient httpService, ILogger<UserService> logger)
+    public UserService(IAuthorizedHttpClient httpClient, ILogger<UserService> logger)
     {
-        _httpService = httpService;
+        _httpClient = httpClient;
         _logger = logger;
     }
 
     public async Task<User> GetUserAsync()
     {
-        var content = await _httpService
+        var content = await _httpClient
             .GetAsync($"{HttpConstants.Host}{UserPageRoute}");
         var document = await content.ParseHtmlAsync();
 
@@ -81,7 +81,7 @@ public class UserService: IUserService
 
     public async Task<bool> TryGetFirstYearAsync(Action<int> callback)
     {
-        var content = await _httpService
+        var content = await _httpClient
             .GetAsync($"{HttpConstants.Host}{UserPageRoute}");
         var document = await content.ParseHtmlAsync();
 
@@ -102,7 +102,7 @@ public class UserService: IUserService
 
     public async Task<bool> IsStudentAsync()
     {
-        var content = await _httpService
+        var content = await _httpClient
             .GetAsync($"{HttpConstants.Host}{UserPageRoute}");
         var document = await content.ParseHtmlAsync();
 

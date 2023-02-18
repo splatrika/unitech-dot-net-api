@@ -1,24 +1,26 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
+    <PackageId>EasyUnitech.NetApi</PackageId>
+    <PackageVersion>0.1.2</PackageVersion>
     <TargetFramework>net7.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <ReleaseVersion>0.1.2</ReleaseVersion>
+    <Authors>Splatrika</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <ItemGroup>
     <None Remove="Newtonsoft.Json" />
     <None Remove="AngleSharp" />
-    <None Remove="AngleSharp.Css" />
     <None Remove="Microsoft.Extensions.Logging.Abstractions" />
-    <None Remove="Constants\" />
+    <None Remove="System.Linq.Async" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
     <PackageReference Include="AngleSharp" Version="1.0.1" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="7.0.0" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Constants\" />
+    <PackageReference Include="System.Linq.Async" Version="6.0.1" />
   </ItemGroup>
 </Project>

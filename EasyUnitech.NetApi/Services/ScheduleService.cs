@@ -1,187 +1,163 @@
 ﻿using System.Globalization;
+using System.Text.Json.Serialization;
 using AngleSharp.Dom;
 using EasyUnitech.NetApi.Constants;
 using EasyUnitech.NetApi.Extensions;
 using EasyUnitech.NetApi.Interfaces;
 using EasyUnitech.NetApi.Models;
 using Microsoft.Extensions.Logging;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace EasyUnitech.NetApi.Services;
 
 public class ScheduleService : IScheduleService
 {
     public const string SchedulePageRoute = "/schedule";
-
-    private readonly IHttpService _httpService;
     private const string QueryDateFormat = "{0:dd.MM.yyyy}";
+    private readonly IAuthorizedHttpClient _httpClient;
 
-    public ScheduleService(
-        IHttpService httpService)
+    public ScheduleService(IAuthorizedHttpClient httpClient)
     {
-        _httpService = httpService;
+        _httpClient = httpClient;
     }
 
     public async Task<IReadOnlyCollection<ScheduleEvent>> GetDayAsync(DateTime day)
     {
-        var dateString = String.Format(QueryDateFormat, day);
-        var content = await _httpService
-            .GetAsync($"{HttpConstants.Host}{SchedulePageRoute}?d={dateString}");
-        var document = await content.ParseHtmlAsync();
-        var column = FindColumn(document, day);
-
-        return await ParseEventsAsync(document, column, day);
+        var unitechEvents = await GetUnitechEventsWeekAsync(day);
+        return await unitechEvents
+            .Where(x => x.DayOfWeek == GetDayOfWeek(day))
+            .ToAsyncEnumerable()
+            .SelectAwait(async x => await ParseScheduleEvent(x, day))
+            .ToListAsync();
     }
 
-    public async Task<IReadOnlyCollection<ScheduleEvent>> GetWeekAsync(DateTime monday)
+    public async Task<IReadOnlyCollection<ScheduleEvent>> GetWeekAsync(DateTime day)
     {
-        const int FirstDateColumn = 1;
-        const int DaysInWeek = 7;
-        var dateString = String.Format(QueryDateFormat, monday);
-        var content = await _httpService.GetAsync($"{HttpConstants.Host}/schedule?d={dateString}");
-        var document = await content.ParseHtmlAsync();
-
-        var events = new List<ScheduleEvent>();
-        for (int i = FirstDateColumn; i < FirstDateColumn + DaysInWeek; i++)
-        {
-            events.AddRange(await ParseEventsAsync(document, i, monday.AddDays(i - 1)));
-        }
-        return events;
+        var unitechEvents = await GetUnitechEventsWeekAsync(day);
+        return await unitechEvents
+            .ToAsyncEnumerable()
+            .SelectAwait(async x => await ParseScheduleEvent(x, day))
+            .ToListAsync();
     }
 
-    private int FindColumn(IDocument document, DateTime date)
+    private async Task<ScheduleEvent> ParseScheduleEvent(UnitechEvent unitechEvent, DateTime day)
     {
-        const string DateFormatInHtml = "{0:dd.MM}";
-        var dateString = String.Format(DateFormatInHtml, date);
+        var monday = day.AddDays((GetDayOfWeek(day) - 1) * -1).Date;
 
-        var dateCells = document
-            .QuerySelector("thead")?
-            .QuerySelectorAll("th")
-            .Select((cell, index) => (Value: cell.QuerySelector("span"), Index: index))
-            ?? throw new FormatException("Unable to find table header with dates");
-
-        foreach (var cell in dateCells)
-        {
-            if (cell.Value == null) continue;
-            if (cell.Value.InnerHtml == dateString)
-            {
-                return cell.Index;
-            }
-        }
-        throw new FormatException($"There is no column for date {dateString}");
-    }
-
-    private async Task<IReadOnlyCollection<ScheduleEvent>> ParseEventsAsync(
-        IDocument document,
-        int column,
-        DateTime date)
-    {
-        var eventCells = document
-            .QuerySelector("tbody")?
-            .QuerySelectorAll("tr")
-            .Select(r => r
-                .QuerySelectorAll("td")
-                .ElementAtOrDefault(column))
-            ?? throw new FormatException("Unable to find table body with events");
-
-        var events = new List<ScheduleEvent>();
-        foreach (var cell in eventCells)
-        {
-            if (cell == null) throw new FormatException("Event cell can't be null");
-            var parsedEvent = await ParseEventAsync(cell, date);
-            if (parsedEvent != null) events.Add(parsedEvent);
-        }
-
-        return events;
-    }
-
-    private async Task<ScheduleEvent?> ParseEventAsync(IElement eventCell, DateTime date)
-    {
-        var content = eventCell
-            .QuerySelector(".time_table_item_validated")?
-            .Attributes
-            .FirstOrDefault(a => a.Name == "data-content")?
-            .TextContent;
-        if (content == null) return null;
-        var eventDocument = await content.ParseHtmlAsync();
-
-        var dateTime = ParseDateTime(eventCell, date);
-        var room = eventDocument
-            .QuerySelector("a")?
-            .InnerHtml;
+        var eventDay = monday.AddDays(unitechEvent.DayOfWeek - 1);
+        var time = ParseTime(unitechEvent.Time, eventDay);
+        var htmlDocument = await unitechEvent.Html.ParseHtmlAsync();
+        var individualNoteDocument = unitechEvent.IndividualNote is null
+            ? null
+            : await unitechEvent.IndividualNote.ParseHtmlAsync();
 
         return new(
-            science: ParseScience(content, eventDocument),
-            start: dateTime.Start,
-            end: dateTime.End,
-            room: room,
-            unitechIndividualNote: ParseUnitechIndividualNotes(eventDocument));
+            science: ParseScience(unitechEvent.Html, htmlDocument),
+            start: time.Start,
+            end: time.End,
+            room: ParseRoom(htmlDocument),
+            unitechIndividualNote: ParseUnitechIndividualNote(individualNoteDocument));
     }
 
-    private (DateTime Start, DateTime End) ParseDateTime(IElement eventCell, DateTime date)
+    private async Task<IReadOnlyCollection<UnitechEvent>> GetUnitechEventsWeekAsync(DateTime day)
+    {
+        var dateString = string.Format(QueryDateFormat, day);
+        var content = await _httpClient.PostAsync(
+            uri: $"{HttpConstants.Host}{SchedulePageRoute}?d={dateString}",
+            formData: new() { ["load"] = "1" });
+        var unitechEvents = JsonConvert.DeserializeObject<IReadOnlyCollection<UnitechEvent>>(content);
+        if (unitechEvents == null)
+        {
+            throw new FormatException("Unable to load events");
+        }
+        return unitechEvents;
+    }
+
+    private (DateTime Start, DateTime End) ParseTime(string timeRangeString, DateTime eventDay)
     {
         const string TimeFormat = "HH:mm";
-        var times = eventCell
-            .QuerySelector("span")?
-            .InnerHtml
-            .Split(" - ");
-        if (times == null || times.Length != 2)
+        var timeStrings = timeRangeString.Split(" - ");
+        if (timeStrings.Length != 2)
         {
-            throw new FormatException("Unable to find event times");
+            throw new FormatException($"Unable to parse time: { timeRangeString }");
         }
         for (var i = 0; i < 2; i++)
         {
             // change 8:00 to 08:00
-            if (times[i].Length == 4) // todo refacor
+            if (timeStrings[i].Length == 4)
             {
-                times[i] = "0" + times[i];
+                timeStrings[i] = "0" + timeStrings[i];
             }
         }
-        if (!DateTime.TryParseExact(times.First(), TimeFormat,
+        if (!DateTime.TryParseExact(timeStrings.First(), TimeFormat,
             CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime start))
         {
             throw new FormatException("Unable to find start time");
         }
-        if (!DateTime.TryParseExact(times.Last(), TimeFormat,
+        if (!DateTime.TryParseExact(timeStrings.Last(), TimeFormat,
             CultureInfo.InvariantCulture, DateTimeStyles.None, out DateTime end))
         {
             throw new FormatException("Unable to find end time");
         }
-
         return (
-            date.Date.Add(start.TimeOfDay),
-            date.Date.Add(end.TimeOfDay));
+            eventDay.Date.Add(start.TimeOfDay),
+            eventDay.Date.Add(end.TimeOfDay));
     }
 
-    private Science ParseScience(string eventCellContent, IDocument eventDocument)
+    private Science ParseScience(string htmlString, IDocument html)
     {
-        var showMoreButton = eventDocument.QuerySelector("button");
+        var showMoreButton = html.QuerySelector("button");
         var scienceId = showMoreButton?
             .Attributes["data-subject"]?
             .TextContent ?? "0";
-        var name = eventCellContent
+        var name = htmlString
             .Split("<br")
-            .First()
-            .Split("<hr/>")
-            .Last();
+            .First();
         return new(
             unitechId: int.TryParse(scienceId, out int id) ? id : 0,
             name: name);
     }
 
-    private string? ParseUnitechIndividualNotes(IDocument eventDocument)
+    private string? ParseRoom(IDocument html)
     {
-        var unitechIndividualNotes = eventDocument
-            .QuerySelector(".individual_schedule_note")?
+        return html
+            .QuerySelector("a")?
+            .InnerHtml;
+    }
+
+    private string? ParseUnitechIndividualNote(IDocument? individualNote)
+    {
+        if (individualNote == null) return null;
+        var unitechIndividualNotes = individualNote
             .QuerySelectorAll("div")
             .Select(x => x.InnerHtml);
-        if (unitechIndividualNotes != null && !unitechIndividualNotes.Any())
-        {
-            unitechIndividualNotes = null;
-        }
-        return unitechIndividualNotes != null
+        return unitechIndividualNotes != null && unitechIndividualNotes.Any()
             ? string.Join(" ", unitechIndividualNotes)
             : null;
+    }
+
+    private int GetDayOfWeek(DateTime day)
+    {
+        var dayOfWeek = day.DayOfWeek;
+        if (dayOfWeek == DayOfWeek.Sunday) return 7;
+        return (int)dayOfWeek;
+    }
+
+    private class UnitechEvent
+    {
+        [JsonProperty("daynum")]
+        public required int DayOfWeek { get; init; }
+
+        [JsonProperty("time")]
+        public required string Time { get; init; }
+
+        [JsonProperty("lparam")]
+        public required string Html { get; init; }
+
+        [JsonProperty("note")]
+        public required string IndividualNote { get; init; }
     }
 }
 

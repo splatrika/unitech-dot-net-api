@@ -123,7 +123,7 @@ public class UserServiceTests
     [Fact]
 	public async void GetUser_ServerReturnsStudentUserPage_ParsedSuccefuly()
 	{
-		var httpServiceMock = new Mock<IHttpService>();
+		var httpServiceMock = new Mock<IAuthorizedHttpClient>();
 		httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
 			.Returns(Task.FromResult(StudentFakeUserPage));
 
@@ -142,7 +142,7 @@ public class UserServiceTests
 	[Fact]
 	public async void TryGetFirstYear_ServerReturnsStudentUserPage_ParsedSuccefuly()
 	{
-		var httpServiceMock = new Mock<IHttpService>();
+		var httpServiceMock = new Mock<IAuthorizedHttpClient>();
 		httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
 			.Returns(Task.FromResult(StudentFakeUserPage));
 
@@ -160,7 +160,7 @@ public class UserServiceTests
 	[Fact]
 	public async void TryGetFirstYear_ServerReturnsTeacherUserPage_DidNotParsed()
 	{
-        var httpServiceMock = new Mock<IHttpService>();
+        var httpServiceMock = new Mock<IAuthorizedHttpClient>();
         httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
             .Returns(Task.FromResult(TeacherFakeUserPage));
 
@@ -178,7 +178,7 @@ public class UserServiceTests
 	[Fact]
 	public async void IsStudent_ServerReturnsStudentUserPage_ReturnedTrue()
 	{
-        var httpServiceMock = new Mock<IHttpService>();
+        var httpServiceMock = new Mock<IAuthorizedHttpClient>();
         httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
             .Returns(Task.FromResult(StudentFakeUserPage));
 
@@ -194,7 +194,7 @@ public class UserServiceTests
     [Fact]
     public async void IsStudent_ServerReturnsTeacherUserPage_ReturnedFalse()
     {
-        var httpServiceMock = new Mock<IHttpService>();
+        var httpServiceMock = new Mock<IAuthorizedHttpClient>();
         httpServiceMock.Setup(x => x.GetAsync($"{HttpConstants.Host}/user"))
             .Returns(Task.FromResult(TeacherFakeUserPage));
 

@@ -20,10 +20,10 @@ public class UserService: IUserService
     public const int FirstYearIndex = 9;
     public const string UserPageRoute = "/user";
 
-    private readonly IHttpService _httpService;
+    private readonly IAuthorizedHttpClient _httpService;
     private readonly ILogger<UserService> _logger;
 
-    public UserService(IHttpService httpService, ILogger<UserService> logger)
+    public UserService(IAuthorizedHttpClient httpService, ILogger<UserService> logger)
     {
         _httpService = httpService;
         _logger = logger;

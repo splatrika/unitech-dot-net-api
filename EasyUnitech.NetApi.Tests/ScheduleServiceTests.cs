@@ -17,7 +17,7 @@ public class ScheduleServiceTests
     private readonly Mock<IAuthorizedHttpClient> _httpServiceMock = new();
     private readonly DateTime _monday = new DateTime(2023, 1, 9);
 	private readonly string _dateString = "09.01.2023";
-	// TODO: Fix formatting
+
 	private readonly string _scheduleResponse = $@"
 [
     {{
@@ -44,26 +44,48 @@ public class ScheduleServiceTests
         ""lparam"": ""Иванов Иван Иванович. Теория алгоритмов <br/><a target=\""_blank\"" href=\""\"">ауд. 12</a><div class=\""schedule_materials_open_btn_wrp\""><button data-subject=\""100\"" class=\""schedule_materials_open_btn\"" onclick=\""scheduleGetMaterials(this)\"" style=\""display: none;\"">Материалы занятия</button></div>"",
         ""note"": null
     }},
+    {{
+        ""daynum"": 3,
+        ""timenum"": 0,
+        ""weeknum"": 0,
+        ""time"": null,
+        ""lparam"": """",
+        ""note"": ""Карантин""
+    }},
 ]";
 
-	public ScheduleServiceTests()
+    private readonly string _scheduleWithHolidaysResponse = $@"
+[
+    {{
+        ""daynum"": 1,
+        ""timenum"": 0,
+        ""weeknum"": 0,
+        ""time"": null,
+        ""lparam"": """",
+        ""note"": ""Карантин""
+    }},
+    {{
+        ""daynum"": 2,
+        ""timenum"": 0,
+        ""weeknum"": 0,
+        ""time"": ""9:00 - 10:30"",
+        ""lparam"": ""Иванов Иван Иванович. Теория алгоритмов <br/><a target=\""_blank\"" href=\""\"">ауд. 1</a><div class=\""schedule_materials_open_btn_wrp\""><button data-subject=\""100\"" class=\""schedule_materials_open_btn\"" onclick=\""scheduleGetMaterials(this)\"" style=\""display: none;\"">Материалы занятия</button></div>"",
+        ""note"": ""<span class=\""individual_schedule_note\""><div>Внимание!</div><div>Занятие группы Г0-00 переносится в аудиторию 0</div></span> ""
+    }}
+]";
+
+    public ScheduleServiceTests()
 	{
-        _httpServiceMock
-            .Setup(
-                x => x.PostAsync(
-                    $"{HttpConstants.Host}{ScheduleService.SchedulePageRoute}?d={_dateString}",
-                    It.Is<Dictionary<string, string>>(x => x["load"] == "1"))
-                )
-            .Returns(Task.FromResult(_scheduleResponse));
 		_service = new(_httpServiceMock.Object);
     }
 
 
 
 	[Fact]
-	public async void GetDay_ServerReturnsSchedulePage_ParsedSuccefuly()
+	public async void GetDay_ServerReturnsSchedule_ParsedSuccefuly()
 	{
-		var exceptedEvents = new List<ScheduleEvent>()
+        SetupSchedule(_scheduleResponse);
+        var exceptedEvents = new List<ScheduleEvent>()
         {
             new(
                 _algorithm,
@@ -84,8 +106,9 @@ public class ScheduleServiceTests
     }
 
     [Fact]
-    public async void GetWeek_ServerReturnsSchedulePage_ParsedSuccefuly()
+    public async void GetWeek_ServerReturnsSchedule_ParsedSuccefuly()
     {
+        SetupSchedule(_scheduleResponse);
         var exceptedEvents = new List<ScheduleEvent>()
         {
             new(
@@ -130,6 +153,50 @@ public class ScheduleServiceTests
         Assert.Equal(exceptedEvents[2].End, events.ElementAt(2).End);
         Assert.Equal(exceptedEvents[2].Room, events.ElementAt(2).Room);
         Assert.Equal(exceptedEvents[2].UnitechIndividualNote, events.ElementAt(2).UnitechIndividualNote);
+    }
+
+    [Fact]
+    public async void GetDay_ServerReturnsScheduleWithHolidays_DidNotParseHolidays()
+    {
+        SetupSchedule(_scheduleWithHolidaysResponse);
+        var events = await _service.GetDayAsync(_monday);
+
+        Assert.Empty(events);
+    }
+
+    [Fact]
+    public async void GetWeekAsync_ServerReturnsScheduleWithHolidays_DidNotParseHolidays()
+    {
+        SetupSchedule(_scheduleWithHolidaysResponse);
+        var exceptedEvents = new List<ScheduleEvent>()
+        {
+            new(
+                _algorithm,
+                new DateTime(2023, 1, 10, 9, 0, 0),
+                new DateTime(2023, 1, 10, 10, 30, 0),
+                "ауд. 1",
+                "Внимание! Занятие группы Г0-00 переносится в аудиторию 0")
+        };
+
+        var events = await _service.GetWeekAsync(_monday);
+
+        Assert.Equal(exceptedEvents[0].Science.Name, events.ElementAt(0).Science.Name);
+        Assert.Equal(exceptedEvents[0].Science.UnitechId, events.ElementAt(0).Science.UnitechId);
+        Assert.Equal(exceptedEvents[0].Start, events.ElementAt(0).Start);
+        Assert.Equal(exceptedEvents[0].End, events.ElementAt(0).End);
+        Assert.Equal(exceptedEvents[0].Room, events.ElementAt(0).Room);
+        Assert.Equal(exceptedEvents[0].UnitechIndividualNote, events.ElementAt(0).UnitechIndividualNote);
+    }
+
+    private void SetupSchedule(string scheduleResponse)
+    {
+        _httpServiceMock
+            .Setup(
+                x => x.PostAsync(
+                    $"{HttpConstants.Host}{ScheduleService.SchedulePageRoute}?d={_dateString}",
+                    It.Is<Dictionary<string, string>>(x => x["load"] == "1"))
+                )
+            .Returns(Task.FromResult(scheduleResponse));
     }
 }
 

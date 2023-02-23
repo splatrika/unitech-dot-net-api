@@ -72,7 +72,14 @@ public class ScheduleService : IScheduleService
         {
             throw new FormatException("Unable to load events");
         }
-        return unitechEvents;
+        return unitechEvents
+            .Where(x => !IsHoliday(x))
+            .ToList();
+    }
+
+    private bool IsHoliday(UnitechEvent unitechEvent)
+    {
+        return unitechEvent.Time == null;
     }
 
     private (DateTime Start, DateTime End) ParseTime(string timeRangeString, DateTime eventDay)
